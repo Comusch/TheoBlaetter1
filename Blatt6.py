@@ -1,120 +1,108 @@
+import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-import numpy as np
 
-lambda_m = 1
-def f(t, y):
-    return [-np.sin(y[1]) *(1+np.cos(y[1]/(1+lambda_m))*y[0]**2)/(1-np.cos(y[1])**2/(1+lambda_m)), y[0]]
+# Define the differential equation as a function
+def f(t, y, lambda_m):
+    epsilon = 1e-12  # Small value to avoid division by zero
+    cos_term = np.cos(y[1])
+    denominator = 1 - cos_term ** 2 / (1 + lambda_m)
 
-#method to calculate the results of 5.2 (the plots form last week)
+    # Adjust the denominator to avoid division by zero
+    if abs(denominator) < epsilon:
+        denominator = epsilon if denominator > 0 else -epsilon
+
+    dydt = -np.sin(y[1]) * (1 + np.cos(y[1] / (1 + lambda_m)) * y[0] ** 2) / denominator
+    return [dydt, y[0]]
+
+
+# Method to calculate the analytical results (assuming a specific form of the analytical solution)
 def analytic_result(t, phi_0):
     t_fit = np.linspace(t[0], t[1], 100)
-    #w is not relevant, because t is t tilde and t tilde = w * t
-    #--> w can be replaced
-    data_fit_phi = []
-    for i in t_fit:
-        data_fit_phi.append([phi_0 * np.cos(i)])
+    data_fit_phi = [phi_0 * np.cos(i) for i in t_fit]
     return t_fit, data_fit_phi
 
 
-print("-----------Test of the numerical calculation------------")
-phi_0 = 1/5*np.pi
-y_0 = [0, phi_0]
-t_span= [0, 4*np.pi]
-print("-------------span of time-------------")
-print(t_span)
+# Function to solve the ODE with given parameters and plot the results
+def solve_and_plot(t_span, y_0, lambda_m, t_eval, title, filename):
+    results_y = solve_ivp(f, t_span, y_0, args=(lambda_m,), t_eval=t_eval)
+    t_n = results_y.t
+    y_n = results_y.y[1]
 
-results_y = solve_ivp(f, t_span, y_0)
+    # Plot the results of the numerical calculation
+    plt.plot(t_n, y_n, label=f'numerical result (lambda_m={lambda_m})')
+    plt.ylabel(r"$\phi$ in rad")
+    plt.xlabel(r"t in $\omega$ s")
+    plt.title(title)
+    plt.legend()
+    plt.savefig(filename)
+    plt.show()
+
+
+# Initial conditions and time span
+phi_0 = 1 / 5 * np.pi
+y_0 = [0, phi_0]
+t_span = [0, 4 * np.pi]
+
+# Numerical result for default parameters
+print("-----------Test of the numerical calculation------------")
+results_y = solve_ivp(f, t_span, y_0, args=(1,))
 print("-------------numerical result-------------")
 print(results_y)
 
-print("--------get data form the results array--------")
+# Extract data from results
 t_array = results_y.t
 y_array = results_y.y[1]
 print("phi over the time data:")
 print(y_array)
 
-print("--------Plot the graph of the results--------")
+# Plot the numerical result
 plt.plot(t_array, y_array, label="numerical result")
 plt.ylabel(r"$\phi$ in rad")
 plt.xlabel(r"t in $\omega$ s")
 plt.show()
 
-print("----------Compare of the numerical result and the analytic one-------")
-#calculate at first the numerical values
-phi_0 = 1/60 *np.pi
-t_span = [0, 4*np.pi]
+# Comparison of the numerical result and the analytical one
+print("----------Compare the numerical result and the analytic one-------")
+phi_0 = 1 / 60 * np.pi
 y_0 = [0, phi_0]
 t_eval = np.linspace(t_span[0], t_span[1], 100)
-results_y = solve_ivp(f, t_span, y_0, t_eval=t_eval)
+results_y = solve_ivp(f, t_span, y_0, args=(1,), t_eval=t_eval)
 t_n_s = results_y.t
 y_n_s = results_y.y[1]
 
-#plot the results of the numerical calculation
+# Plot the numerical result
 plt.plot(t_n_s, y_n_s, label="numerical result")
+
+# Calculate the analytical result
+t_a_s, y_a_s = analytic_result(t_span, phi_0)
+plt.plot(t_a_s, y_a_s, label="analytic result")
 plt.ylabel(r"$\phi$ in rad")
 plt.xlabel(r"t in $\omega$ s")
-
-t_a_s, y_a_s = analytic_result(t_span, phi_0)
-print(t_a_s)
-print("-----")
-print(y_a_s)
-
-plt.plot(t_a_s, y_a_s, label="analytic result")
 plt.legend()
 plt.savefig("Blatt6_kleinwinkelnäherung_vergleich.png")
 plt.show()
 
+# Graph with larger phi
 print("-------------Graph with larger phi----------")
-phi_0 = 1/3 *np.pi
-t_span = [0, 10*np.pi]
+phi_0 = 1 / 3 * np.pi
 y_0 = [0, phi_0]
+t_span = [0, 10 * np.pi]
 t_eval = np.linspace(t_span[0], t_span[1], 150)
-results_y = solve_ivp(f, t_span, y_0, t_eval=t_eval)
-t_n_l = results_y.t
-y_n_l = results_y.y[1]
+solve_and_plot(t_span, y_0, 1, t_eval, "Larger Amplitudes (lambda_m = 1)", "Blatt6_phi_with_large_amplitudes_1.png")
 
-#plot the results of the numerical calculation
-plt.plot(t_n_l, y_n_l, label="numerical result")
-plt.ylabel(r"$\phi$ in rad")
-plt.xlabel(r"t in $\omega$ s")
-plt.legend()
-plt.savefig("Blatt6_phi_with_large_amplitudes_1.png")
-plt.show()
+# Compare the results with different lambda_m values
+print("-----------Compare the results with lambda_m values 1, 0, and infinity---------")
 
-print("-----------Compare the results with lambda_m value 1, goes to 0 and infinity---------")
-#the results with lambda_m = 0
-lambda_m = 0
-phi_0 = 1/3*np.pi
-t_span = [0, 10*np.pi]
-y_0 = [0, phi_0]
+# lambda_m = 0
+solve_and_plot(t_span, y_0, 0, t_eval, "Larger Amplitudes (lambda_m = 0)", "Blatt6_phi_with_large_amplitudes_0.png")
+
+# lambda_m = infinity
+solve_and_plot(t_span, y_0, np.inf, t_eval, "Larger Amplitudes (lambda_m = inf)",
+               "Blatt6_phi_with_large_amplitudes_inf.png")
+
+print("-----------rollover with v_0 ------------")
+y_0 = [3.5, 1/3*np.pi]
+t_span = [0, 10 * np.pi]
 t_eval = np.linspace(t_span[0], t_span[1], 150)
-results_y = solve_ivp(f, t_span, y_0, t_eval=t_eval)
-t_n_l_0 = results_y.t
-y_n_l_0 = results_y.y[1]
-
-#plot the results of the numerical calculation
-plt.plot(t_n_l_0, y_n_l_0, label="numerical result")
-plt.ylabel(r"$\phi$ in rad")
-plt.xlabel(r"t in $\omega$ s")
-plt.legend()
-plt.savefig("Blatt6_phi_with_large_amplitudes_0.png")
-plt.show()
-
-#the results with lambda_m = infinity
-lambda_m = np.infty
-phi_0 = 1/3*np.pi
-t_span = [0, 10*np.pi]
-y_0 = [0, phi_0]
-t_eval = np.linspace(t_span[0], t_span[1], 150)
-results_y = solve_ivp(f, t_span, y_0, t_eval=t_eval)
-t_n_l_inf = results_y.t
-y_n_l_inf = results_y.y[1]
-
-#plot the results of the numerical calculation
-plt.plot(t_n_l_inf, y_n_l_inf, label="numerical result")
-plt.ylabel(r"$\phi$ in rad")
-plt.xlabel(r"t in $\omega$ s")
-plt.legend()
-plt.savefig("Blatt6_phi_with_large_amplitudes_inf.png")
-plt.show()
+solve_and_plot(t_span, y_0, 1, t_eval, f"Larger Amplitudes (lambda_m = 1 and v_0 = {y_0[0]})", "Blatt6_phi_with_large_amplitudes_1_v0.png")
