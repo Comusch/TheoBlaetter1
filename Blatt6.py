@@ -1,6 +1,9 @@
+from asyncio import sleep
+
 import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+import _thread
 
 # Define the differential equation as a function
 def f(t, y, lambda_m):
@@ -19,24 +22,27 @@ def f(t, y, lambda_m):
 # Method to calculate the analytical results (assuming a specific form of the analytical solution)
 def analytic_result(t, phi_0):
     t_fit = np.linspace(t[0], t[1], 100)
-    data_fit_phi = [phi_0 * np.cos(i) for i in t_fit]
+    data_fit_phi = [phi_0 * np.cos(1.4*i) for i in t_fit]
     return t_fit, data_fit_phi
 
 
 # Function to solve the ODE with given parameters and plot the results
-def solve_and_plot(t_span, y_0, lambda_m, t_eval, title, filename):
+def solve_and_plot(t_span, y_0, lambda_m, t_eval, title, filename, save=True):
     results_y = solve_ivp(f, t_span, y_0, args=(lambda_m,), t_eval=t_eval)
     t_n = results_y.t
     y_n = results_y.y[1]
 
-    # Plot the results of the numerical calculation
-    plt.plot(t_n, y_n, label=f'numerical result (lambda_m={lambda_m})')
-    plt.ylabel(r"$\phi$ in rad")
-    plt.xlabel(r"t in $\omega$ s")
-    plt.title(title)
-    plt.legend()
-    plt.savefig(filename)
-    plt.show()
+    # Plot the results of the numerical calculation#
+    if save:
+        plt.plot(t_n, y_n, label=f'numerical result (lambda_m={lambda_m})')
+        plt.ylabel(r"$\phi$ in rad")
+        plt.xlabel(r"t in $\omega$ s")
+        plt.title(title)
+        plt.legend()
+    if save:
+        plt.savefig(filename)
+        plt.show()
+    return results_y
 
 
 # Initial conditions and time span
@@ -102,7 +108,13 @@ solve_and_plot(t_span, y_0, np.inf, t_eval, "Larger Amplitudes (lambda_m = inf)"
                "Blatt6_phi_with_large_amplitudes_inf.png")
 
 print("-----------rollover with v_0 ------------")
-y_0 = [3.5, 1/3*np.pi]
-t_span = [0, 10 * np.pi]
-t_eval = np.linspace(t_span[0], t_span[1], 150)
-solve_and_plot(t_span, y_0, 1, t_eval, f"Larger Amplitudes (lambda_m = 1 and v_0 = {y_0[0]})", "Blatt6_phi_with_large_amplitudes_1_v0.png")
+for v_0 in np.linspace(0, 3, 100):
+    y_0 = [v_0, 1/3*np.pi]
+    t_span = [0, 200 * np.pi]
+    t_eval = np.linspace(t_span[0], t_span[1], 150)
+    results_y = solve_and_plot(t_span, y_0, 1, t_eval, f"Larger Amplitudes (lambda_m = 1 and v_0 = {y_0[0]})", "Blatt6_phi_with_large_amplitudes_1_v0.png", False)
+    for data in results_y.y[1]:
+        if data > np.pi or data < -1*np.pi:
+            print(f"With the beginning speed of v_0 {v_0}, there is a rollover.")
+            break
+
